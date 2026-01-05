@@ -1,100 +1,571 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<title>Conflict Serializability Checker</title>
-<style>
-    body { font-family: sans-serif; padding: 20px; }
-    textarea { width: 100%; height: 150px; }
-    button { margin-top: 10px; padding: 10px 20px; }
-    pre { background: #f0f0f0; padding: 10px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پایگاه داده پیشرفته - بررسی Serializability</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Vazirmatn', Tahoma, sans-serif;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-slide-down {
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes pulse-success {
+            0%, 100% { background-color: #10b981; }
+            50% { background-color: #059669; }
+        }
+        @keyframes pulse-error {
+            0%, 100% { background-color: #ef4444; }
+            50% { background-color: #dc2626; }
+        }
+        .pulse-success {
+            animation: pulse-success 0.5s ease-in-out;
+        }
+        .pulse-error {
+            animation: pulse-error 0.5s ease-in-out;
+        }
+    </style>
 </head>
-<body>
+<body class="bg-gray-50 min-h-screen">
+    
+    <!-- Header -->
+    <div class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex items-center justify-center gap-4">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                </svg>
+                <div>
+                    <h1 class="text-4xl font-bold">پایگاه داده پیشرفته</h1>
+                    <p class="text-blue-100 mt-1">پی در پی پذیری</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<h2>Conflict Serializability Checker</h2>
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        
+        <!-- Table Mode -->
+        <div id="tableMode" class="bg-white rounded-2xl shadow-xl p-6 mb-6 animate-slide-down">
+            <div class="mb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    <h3 class="text-xl font-bold text-gray-800">تراکنش‌ها</h3>
+                </div>
+                <div class="bg-blue-50 border-r-4 border-blue-500 p-4 rounded-lg mb-4">
+                    <p class="text-sm text-gray-700">
+                        <span class="font-semibold">راهنما:</span>
+                        شناسه تراکنش (مثال: T1)، عملیات (Read، Write، Commit یا Abort) و نام داده (مثال: x) را وارد کنید.
+                        <br>
+                        <span class="font-semibold text-orange-600">توجه:</span> برای عملیات Commit و Abort نیازی به وارد کردن نام داده نیست.
+                    </p>
+                </div>
+            </div>
 
-<p>ورودی: هر خط = عملیات<br>
-فرمت: TID OPERATION DATA<br>
-مثال: <code>T1 R x</code></p>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-indigo-600 text-white">
+                            <th class="py-4 px-4 text-center rounded-tr-xl font-semibold">ردیف</th>
+                            <th class="py-4 px-4 text-center font-semibold">شناسه تراکنش</th>
+                            <th class="py-4 px-4 text-center font-semibold">عملیات</th>
+                            <th class="py-4 px-4 text-center font-semibold">داده</th>
+                            <th class="py-4 px-4 text-center rounded-tl-xl font-semibold">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody" class="divide-y divide-gray-200">
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="py-3 px-4 text-center text-gray-600 font-semibold">1</td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="مثال: T1" value="T1" 
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            </td>
+                            <td class="py-3 px-4">
+                                <select class="operation-select w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white cursor-pointer" onchange="toggleDataInput(this)">
+                                    <option value="R">Read (R)</option>
+                                    <option value="W">Write (W)</option>
+                                    <option value="C">Commit (C)</option>
+                                    <option value="A">Abort (A)</option>
+                                </select>
+                            </td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="مثال: x" value="x" 
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <button onclick="removeRow(this)" 
+                                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 transform hover:scale-105 font-semibold">
+                                    حذف
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="py-3 px-4 text-center text-gray-600 font-semibold">2</td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="مثال: T2" value="T2" 
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            </td>
+                            <td class="py-3 px-4">
+                                <select class="operation-select w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white cursor-pointer" onchange="toggleDataInput(this)">
+                                    <option value="R" selected>Read (R)</option>
+                                    <option value="W">Write (W)</option>
+                                    <option value="C">Commit (C)</option>
+                                    <option value="A">Abort (A)</option>
+                                </select>
+                            </td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="مثال: x" value="x" 
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <button onclick="removeRow(this)" 
+                                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 transform hover:scale-105 font-semibold">
+                                    حذف
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="py-3 px-4 text-center text-gray-600 font-semibold">3</td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="مثال: T1" value="T1" 
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            </td>
+                            <td class="py-3 px-4">
+                                <select class="operation-select w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white cursor-pointer" onchange="toggleDataInput(this)">
+                                    <option value="R">Read (R)</option>
+                                    <option value="W" selected>Write (W)</option>
+                                    <option value="C">Commit (C)</option>
+                                    <option value="A">Abort (A)</option>
+                                </select>
+                            </td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="مثال: x" value="x" 
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <button onclick="removeRow(this)" 
+                                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 transform hover:scale-105 font-semibold">
+                                    حذف
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="py-3 px-4 text-center text-gray-600 font-semibold">4</td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="مثال: T2" value="T2" 
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            </td>
+                            <td class="py-3 px-4">
+                                <select class="operation-select w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white cursor-pointer" onchange="toggleDataInput(this)">
+                                    <option value="R">Read (R)</option>
+                                    <option value="W">Write (W)</option>
+                                    <option value="C" selected>Commit (C)</option>
+                                    <option value="A">Abort (A)</option>
+                                </select>
+                            </td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="-" disabled
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-gray-100 cursor-not-allowed">
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <button onclick="removeRow(this)" 
+                                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 transform hover:scale-105 font-semibold">
+                                    حذف
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-blue-50 transition-colors duration-200">
+                            <td class="py-3 px-4 text-center text-gray-600 font-semibold">5</td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="مثال: T1" value="T1" 
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            </td>
+                            <td class="py-3 px-4">
+                                <select class="operation-select w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white cursor-pointer" onchange="toggleDataInput(this)">
+                                    <option value="R">Read (R)</option>
+                                    <option value="W">Write (W)</option>
+                                    <option value="C" selected>Commit (C)</option>
+                                    <option value="A">Abort (A)</option>
+                                </select>
+                            </td>
+                            <td class="py-3 px-4">
+                                <input type="text" placeholder="-" disabled
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-gray-100 cursor-not-allowed">
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <button onclick="removeRow(this)" 
+                                    class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 transform hover:scale-105 font-semibold">
+                                    حذف
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-<textarea id="scheduleInput">
-T1 R x
-T2 R x
-T1 W x
-T2 W y
-T3 R y
-T3 W x
-</textarea>
+            <button onclick="addRow()" 
+                class="w-full mt-4 py-3 px-6 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-all duration-200 transform hover:scale-105 shadow-lg">
+                <div class="flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    <span>افزودن سطر جدید</span>
+                </div>
+            </button>
+        </div>
 
-<button onclick="checkSchedule()">بررسی</button>
+        <!-- Check Button -->
+        <button onclick="checkSchedule()" 
+            class="w-full py-4 px-8 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 shadow-xl mb-6">
+            <div class="flex items-center justify-center gap-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+                <span>بررسی سریال‌پذیری</span>
+            </div>
+        </button>
 
-<h3>نتیجه:</h3>
-<pre id="output"></pre>
+        <!-- Result Section -->
+        <div id="resultSection" class="hidden animate-slide-down">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="text-2xl font-bold text-gray-800">نتیجه بررسی</h3>
+                </div>
+                <div id="output" class="p-6 rounded-xl text-lg font-semibold text-center"></div>
+                <div id="scheduleDisplay" class="mt-4"></div>
+            </div>
+        </div>
 
-<script>
-// تبدیل متن ورودی به آرایه schedule
-function parseInput(input) {
-    return input.trim().split('\n').map(line => line.trim().split(/\s+/));
-}
+    </div>
 
-// ساخت گراف پیش نیاز
-function buildPrecedenceGraph(schedule) {
-    const graph = {};
-    schedule.forEach(([t]) => { if (!graph[t]) graph[t] = new Set(); });
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-300 py-6 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-sm">پی در پی پذیری</p>
+            <p class="text-xs mt-2 text-gray-400">Developed by Farhad Firozitabar</p>
+        </div>
+    </footer>
 
-    for (let i = 0; i < schedule.length; i++) {
-        const [t1, op1, data1] = schedule[i];
-        for (let j = i + 1; j < schedule.length; j++) {
-            const [t2, op2, data2] = schedule[j];
-            if (t1 !== t2 && data1 === data2) {
-                if (op1 === 'W' || op2 === 'W') graph[t1].add(t2);
+    <script>
+        let rowCounter = 5;
+
+        // تابع غیرفعال/فعال کردن فیلد داده بر اساس نوع عملیات
+        function toggleDataInput(selectElement) {
+            const row = selectElement.closest('tr');
+            const dataInput = row.querySelector('td:nth-child(4) input');
+            const operation = selectElement.value;
+            
+            if (operation === 'C' || operation === 'A') {
+                dataInput.disabled = true;
+                dataInput.value = '';
+                dataInput.placeholder = '-';
+                dataInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+            } else {
+                dataInput.disabled = false;
+                dataInput.placeholder = 'مثال: x';
+                dataInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
             }
         }
-    }
-    return graph;
-}
 
-// چک کردن حلقه با DFS
-function hasCycle(graph) {
-    const visited = new Set();
-    const recStack = new Set();
+        // افزودن سطر جدید به جدول
+        function addRow() {
+            rowCounter++;
+            const tbody = document.getElementById('transactionTableBody');
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-blue-50 transition-colors duration-200 animate-slide-down';
+            row.innerHTML = `
+                <td class="py-3 px-4 text-center text-gray-600 font-semibold">${rowCounter}</td>
+                <td class="py-3 px-4">
+                    <input type="text" placeholder="مثال: T1" 
+                        class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                </td>
+                <td class="py-3 px-4">
+                    <select class="operation-select w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white cursor-pointer" onchange="toggleDataInput(this)">
+                        <option value="R">Read (R)</option>
+                        <option value="W">Write (W)</option>
+                        <option value="C">Commit (C)</option>
+                        <option value="A">Abort (A)</option>
+                    </select>
+                </td>
+                <td class="py-3 px-4">
+                    <input type="text" placeholder="مثال: x" 
+                        class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                </td>
+                <td class="py-3 px-4 text-center">
+                    <button onclick="removeRow(this)" 
+                        class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 transform hover:scale-105 font-semibold">
+                        حذف
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+            updateRowNumbers();
+        }
 
-    function dfs(node) {
-        visited.add(node);
-        recStack.add(node);
-        for (const neighbor of graph[node]) {
-            if (!visited.has(neighbor)) {
-                if (dfs(neighbor)) return true;
-            } else if (recStack.has(neighbor)) {
-                return true;
+        // حذف سطر از جدول
+        function removeRow(btn) {
+            const tbody = document.getElementById('transactionTableBody');
+            if (tbody.children.length > 1) {
+                btn.closest('tr').remove();
+                updateRowNumbers();
+            } else {
+                showNotification('حداقل یک سطر باید وجود داشته باشد', 'error');
             }
         }
-        recStack.delete(node);
-        return false;
-    }
 
-    for (const node in graph) {
-        if (!visited.has(node)) {
-            if (dfs(node)) return true;
+        // به‌روزرسانی شماره سطرها
+        function updateRowNumbers() {
+            const tbody = document.getElementById('transactionTableBody');
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                row.querySelector('td:first-child').textContent = index + 1;
+            });
+            rowCounter = rows.length;
         }
-    }
-    return false;
-}
 
-// اجرای بررسی
-function checkSchedule() {
-    const input = document.getElementById('scheduleInput').value;
-    const schedule = parseInput(input);
-    const graph = buildPrecedenceGraph(schedule);
-    const output = document.getElementById('output');
-    if (hasCycle(graph)) {
-        output.textContent = "Schedule به صورت conflict serializable نیست";
-    } else {
-        output.textContent = "Schedule conflict serializable هست";
-    }
-}
-</script>
+        // خواندن داده‌ها از جدول
+        function getScheduleFromTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            const rows = tbody.querySelectorAll('tr');
+            const schedule = [];
+            
+            rows.forEach(row => {
+                const tid = row.querySelector('td:nth-child(2) input').value.trim();
+                const op = row.querySelector('td:nth-child(3) select').value;
+                const data = row.querySelector('td:nth-child(4) input').value.trim();
+                
+                // برای Commit و Abort نیازی به داده نیست
+                if (tid && op) {
+                    if (op === 'C' || op === 'A') {
+                        schedule.push([tid, op, '']);
+                    } else if (data) {
+                        schedule.push([tid, op, data]);
+                    }
+                }
+            });
+            
+            return schedule;
+        }
+
+
+        // ساخت گراف پیش نیاز
+        function buildPrecedenceGraph(schedule) {
+            const graph = {};
+            const abortedTransactions = new Set();
+            
+            // شناسایی تراکنش‌های abort شده
+            schedule.forEach(([tid, op]) => {
+                if (op === 'A') {
+                    abortedTransactions.add(tid);
+                }
+            });
+            
+            // حذف عملیات تراکنش‌های abort شده
+            const validSchedule = schedule.filter(([tid, op]) => {
+                return !abortedTransactions.has(tid) || op === 'A';
+            });
+            
+            // ساخت گراف فقط از تراکنش‌های commit شده یا در حال اجرا
+            validSchedule.forEach(([t]) => { 
+                if (!graph[t]) graph[t] = new Set(); 
+            });
+
+            for (let i = 0; i < validSchedule.length; i++) {
+                const [t1, op1, data1] = validSchedule[i];
+                // نادیده گرفتن عملیات Commit و Abort در بررسی conflict
+                if (op1 === 'C' || op1 === 'A') continue;
+                
+                for (let j = i + 1; j < validSchedule.length; j++) {
+                    const [t2, op2, data2] = validSchedule[j];
+                    // نادیده گرفتن عملیات Commit و Abort در بررسی conflict
+                    if (op2 === 'C' || op2 === 'A') continue;
+                    
+                    if (t1 !== t2 && data1 === data2 && data1 !== '') {
+                        // Conflict: Write-Read, Read-Write, Write-Write
+                        if (op1 === 'W' || op2 === 'W') {
+                            graph[t1].add(t2);
+                        }
+                    }
+                }
+            }
+            return graph;
+        }
+
+        // چک کردن حلقه در گراف با DFS
+        function hasCycle(graph) {
+            const visited = new Set();
+            const recStack = new Set();
+
+            function dfs(node) {
+                visited.add(node);
+                recStack.add(node);
+                for (const neighbor of graph[node]) {
+                    if (!visited.has(neighbor)) {
+                        if (dfs(neighbor)) return true;
+                    } else if (recStack.has(neighbor)) {
+                        return true;
+                    }
+                }
+                recStack.delete(node);
+                return false;
+            }
+
+            for (const node in graph) {
+                if (!visited.has(node)) {
+                    if (dfs(node)) return true;
+                }
+            }
+            return false;
+        }
+
+        // نمایش اعلان
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white font-semibold z-50 animate-slide-down ${
+                type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+            }`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(-50%) translateY(-20px)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // نمایش Schedule
+        function displaySchedule(schedule) {
+            const scheduleDisplay = document.getElementById('scheduleDisplay');
+            scheduleDisplay.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-4 mt-4">
+                    <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        زمان‌بندی وارد شده:
+                    </h4>
+                    <div class="bg-white p-3 rounded border-2 border-gray-200 font-mono text-sm">
+                        ${schedule.map(([tid, op, data], idx) => {
+                            const opColor = op === 'C' ? 'text-green-600' : 
+                                          op === 'A' ? 'text-red-600' : 
+                                          'text-gray-600';
+                            const dataDisplay = (op === 'C' || op === 'A') ? '-' : data;
+                            
+                            return `<div class="flex items-center gap-3 py-1">
+                                <span class="text-gray-400">${idx + 1}.</span>
+                                <span class="font-bold text-blue-600">${tid}</span>
+                                <span class="${opColor} font-semibold">${op}</span>
+                                <span class="text-purple-600">${dataDisplay}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // بررسی اینکه آیا تراکنش‌ها به درستی پایان یافته‌اند
+        function validateTransactionEndings(schedule) {
+            const transactions = {};
+            const warnings = [];
+            
+            schedule.forEach(([tid, op]) => {
+                if (!transactions[tid]) {
+                    transactions[tid] = { hasCommit: false, hasAbort: false, hasOtherOps: false };
+                }
+                
+                if (op === 'C') transactions[tid].hasCommit = true;
+                else if (op === 'A') transactions[tid].hasAbort = true;
+                else transactions[tid].hasOtherOps = true;
+            });
+            
+            for (const [tid, state] of Object.entries(transactions)) {
+                if (state.hasCommit && state.hasAbort) {
+                    warnings.push(`هشدار: تراکنش ${tid} هم Commit و هم Abort دارد!`);
+                } else if (!state.hasCommit && !state.hasAbort && state.hasOtherOps) {
+                    warnings.push(`هشدار: تراکنش ${tid} بدون Commit یا Abort است!`);
+                }
+            }
+            
+            return warnings;
+        }
+
+        // اجرای بررسی
+        function checkSchedule() {
+            const schedule = getScheduleFromTable();
+            
+            if (schedule.length === 0) {
+                showNotification('لطفاً حداقل یک تراکنش وارد کنید', 'error');
+                return;
+            }
+            
+            // بررسی validation
+            const warnings = validateTransactionEndings(schedule);
+            if (warnings.length > 0) {
+                const warningMsg = warnings.join('\n');
+                showNotification(warningMsg, 'error');
+            }
+            
+            const graph = buildPrecedenceGraph(schedule);
+            const output = document.getElementById('output');
+            const resultSection = document.getElementById('resultSection');
+            
+            resultSection.classList.remove('hidden');
+            
+            if (hasCycle(graph)) {
+                output.className = 'p-6 rounded-xl text-lg font-semibold text-center bg-red-500 text-white pulse-error';
+                output.innerHTML = `
+                    <div class="flex items-center justify-center gap-3">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>پی‌درپی‌پذیر نیست</span>
+                    </div>
+                `;
+            } else {
+                output.className = 'p-6 rounded-xl text-lg font-semibold text-center bg-green-500 text-white pulse-success';
+                output.innerHTML = `
+                    <div class="flex items-center justify-center gap-3">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>پی‌درپی‌پذیر است</span>
+                    </div>
+                `;
+            }
+            
+            // نمایش هشدارها در نتیجه
+            if (warnings.length > 0) {
+                output.innerHTML += `
+                    <div class="mt-4 p-4 bg-yellow-500 text-white rounded-lg text-sm">
+                        <div class="font-bold mb-2">⚠️ هشدارها:</div>
+                        ${warnings.map(w => `<div class="mt-1">• ${w}</div>`).join('')}
+                    </div>
+                `;
+            }
+            
+            displaySchedule(schedule);
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    </script>
 
 </body>
 </html>
