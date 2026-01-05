@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>Conflict Serializability Checker</title>
+<style>
+    body { font-family: sans-serif; padding: 20px; }
+    textarea { width: 100%; height: 150px; }
+    button { margin-top: 10px; padding: 10px 20px; }
+    pre { background: #f0f0f0; padding: 10px; }
+</style>
+</head>
+<body>
+
+<h2>Conflict Serializability Checker</h2>
+
+<p>ورودی: هر خط = عملیات<br>
+فرمت: TID OPERATION DATA<br>
+مثال: <code>T1 R x</code></p>
+
+<textarea id="scheduleInput">
+T1 R x
+T2 R x
+T1 W x
+T2 W y
+T3 R y
+T3 W x
+</textarea>
+
+<button onclick="checkSchedule()">بررسی</button>
+
+<h3>نتیجه:</h3>
+<pre id="output"></pre>
+
+<script>
+// تبدیل متن ورودی به آرایه schedule
+function parseInput(input) {
+    return input.trim().split('\n').map(line => line.trim().split(/\s+/));
+}
+
+// ساخت گراف پیش نیاز
+function buildPrecedenceGraph(schedule) {
+    const graph = {};
+    schedule.forEach(([t]) => { if (!graph[t]) graph[t] = new Set(); });
+
+    for (let i = 0; i < schedule.length; i++) {
+        const [t1, op1, data1] = schedule[i];
+        for (let j = i + 1; j < schedule.length; j++) {
+            const [t2, op2, data2] = schedule[j];
+            if (t1 !== t2 && data1 === data2) {
+                if (op1 === 'W' || op2 === 'W') graph[t1].add(t2);
+            }
+        }
+    }
+    return graph;
+}
+
+// چک کردن حلقه با DFS
+function hasCycle(graph) {
+    const visited = new Set();
+    const recStack = new Set();
+
+    function dfs(node) {
+        visited.add(node);
+        recStack.add(node);
+        for (const neighbor of graph[node]) {
+            if (!visited.has(neighbor)) {
+                if (dfs(neighbor)) return true;
+            } else if (recStack.has(neighbor)) {
+                return true;
+            }
+        }
+        recStack.delete(node);
+        return false;
+    }
+
+    for (const node in graph) {
+        if (!visited.has(node)) {
+            if (dfs(node)) return true;
+        }
+    }
+    return false;
+}
+
+// اجرای بررسی
+function checkSchedule() {
+    const input = document.getElementById('scheduleInput').value;
+    const schedule = parseInput(input);
+    const graph = buildPrecedenceGraph(schedule);
+    const output = document.getElementById('output');
+    if (hasCycle(graph)) {
+        output.textContent = "Schedule به صورت conflict serializable نیست";
+    } else {
+        output.textContent = "Schedule conflict serializable هست";
+    }
+}
+</script>
+
+</body>
+</html>
